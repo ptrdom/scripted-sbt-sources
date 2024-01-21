@@ -1,6 +1,7 @@
 package me.ptrdom.sbt.scripted.sources
 
 import java.nio.file.Files
+import java.nio.file.Path
 
 import sbt.*
 import sbt.AutoPlugin
@@ -9,6 +10,7 @@ import sbt.ScriptedPlugin
 import sbt.ScriptedPlugin.autoImport.sbtTestDirectory
 import sbt.ScriptedPlugin.autoImport.scripted
 import sbt.internal.util.ManagedLogger
+import sbt.nio.Keys.watchTriggers
 
 import scala.io.Source
 import scala.jdk.CollectionConverters.*
@@ -18,134 +20,166 @@ object ScriptedSourcesPlugin extends AutoPlugin {
   override def requires = ScriptedPlugin
 
   object autoImport {
-    val scriptedSource = taskKey[Boolean]("")
-    val scriptedSourceCheck = taskKey[Unit]("")
+    val scriptedSourcesSync =
+      taskKey[Boolean]("Sync scripted tests with their sources")
+    val scriptedSourcesCheck =
+      taskKey[Unit]("Check if scripted tests and their sources are in sync")
   }
 
   import autoImport.*
 
-  private val sourceConfigFileName = ".source"
+  private val sourcesConfigFileName = ".sources"
 
-  // regex for sbt plugin version
-  // [\"](.+)[\"]\s*[%]\s*[\"](.+)[\"]\s*[%]\s*[\"](.+)[\"]
-
-  def runScriptedSource(
-      dry: Boolean,
-      log: ManagedLogger
-  )(baseDirectoryV: File, sbtTestDirectoryV: File) = {
+  private def processScriptedSources[T](
+      log: Logger
+  )(
+      baseDirectoryV: File,
+      sbtTestDirectoryV: File
+  )(
+      handler: Iterator[(Path, Set[sbt.File])] => T
+  ): T = {
     Using(
       Files.walk(sbtTestDirectoryV.toPath)
-    )(
-      _.iterator().asScala
-        .foldLeft(true) { case (pristine, testDirectory) =>
-          val sourceConfig =
-            new File(testDirectory.toFile, sourceConfigFileName)
-          if (!sourceConfig.exists()) {
+    ) { stream =>
+      val dataForHandler = stream
+        .iterator()
+        .asScala
+        .flatMap { testDirectory =>
+          val sourcesConfig =
+            new File(testDirectory.toFile, sourcesConfigFileName)
+          if (!sourcesConfig.exists()) {
             log.debug(
-              s"scripted source config missing [${sourceConfig.absolutePath}]"
+              s"scripted sources config missing [${sourcesConfig.absolutePath}]"
             )
-            pristine
+            List.empty
           } else {
-            val sourcesForTest: Seq[String] =
-              Using(Source.fromFile(sourceConfig)) { source =>
-                source.getLines().toList
+            val sourcesForTest: Set[File] =
+              Using(Source.fromFile(sourcesConfig)) { source =>
+                source
+                  .getLines()
+                  .map { sourceForTest =>
+                    val sourceForTestDirectory = baseDirectoryV / sourceForTest
+                    if (!sourceForTestDirectory.exists()) {
+                      sys.error(
+                        s"Source for test is missing [${sourceForTestDirectory.getAbsolutePath}]"
+                      )
+                    } else {
+                      log.debug(
+                        s"Source for test [${sourceForTestDirectory.getAbsolutePath}] exists"
+                      )
+                      sourceForTestDirectory
+                    }
+                  }
+                  .toSet
               }.fold(
                 ex =>
                   throw new RuntimeException(
-                    s"Failed to read source config [${sourceConfig.getAbsolutePath}]",
+                    s"Failed to read source config [${sourcesConfig.getAbsolutePath}]",
                     ex
                   ),
                 identity
               )
-
-            sourcesForTest
-              .foldLeft(true) { case (pristine, sourceForTest) =>
-                log.debug(
-                  s"Source for test is [$sourceForTest]"
-                )
-
-                val sourceToTest = baseDirectoryV / sourceForTest
-                if (!sourceToTest.exists()) {
-                  sys.error(
-                    s"Source for test is missing [${sourceToTest.getAbsolutePath}]"
-                  )
-                } else {
-                  log.debug(
-                    s"Source for test [${sourceToTest.getAbsolutePath}] exists"
-                  )
-                  Using(
-                    Files
-                      .walk(sourceToTest.toPath)
-                  )(
-                    _.iterator().asScala
-                      .map(_.toFile)
-                      .filter(
-                        _.isFile
-                      )
-                      .foldLeft(true) { case (pristine, file) =>
-                        val targetFile = new File(
-                          file.getAbsolutePath.replace(
-                            sourceToTest.getAbsolutePath,
-                            testDirectory.toFile.getAbsolutePath
-                          )
-                        )
-                        if (
-                          !Hash(file).sameElements(
-                            Hash(targetFile)
-                          ) || !targetFile.exists()
-                        ) {
-                          log.debug(
-                            s"File changed [${file.getAbsolutePath}], copying to [${targetFile.getAbsolutePath}]"
-                          )
-                          if (!dry) {
-                            IO.copyFile(
-                              file,
-                              targetFile
-                            )
-                          }
-                          false
-                        } else {
-                          log.debug(
-                            s"File not changed [${file.getAbsolutePath}]"
-                          )
-                          pristine
-                        }
-                      }
-                  ).fold(ex => throw ex, identity)
-                }
-              }
+            List((testDirectory, sourcesForTest))
           }
         }
-    )
+      handler(dataForHandler)
+    }
       .fold(ex => throw ex, identity)
   }
 
+  private def runScriptedSource(
+      dry: Boolean,
+      log: ManagedLogger
+  )(baseDirectoryV: File, sbtTestDirectoryV: File): Boolean = {
+    processScriptedSources(log)(baseDirectoryV, sbtTestDirectoryV)(_.flatMap {
+      case (testDirectory, sourcesForTest) =>
+        sourcesForTest.map(sourceForTest => (testDirectory, sourceForTest))
+    }
+      .foldLeft(true) { case (pristine, (testDirectory, sourceForTest)) =>
+        Using(
+          Files
+            .walk(sourceForTest.toPath)
+        )(
+          _.iterator().asScala
+            .map(_.toFile)
+            .filter(
+              _.isFile
+            )
+            .foldLeft(pristine) { case (pristine, file) =>
+              val targetFile = new File(
+                file.getAbsolutePath.replace(
+                  sourceForTest.getAbsolutePath,
+                  testDirectory.toFile.getAbsolutePath
+                )
+              )
+              if (
+                !Hash(file).sameElements(
+                  Hash(targetFile)
+                ) || !targetFile.exists()
+              ) {
+                log.debug(
+                  s"File changed [${file.getAbsolutePath}], copying to [${targetFile.getAbsolutePath}]"
+                )
+                if (!dry) {
+                  IO.copyFile(
+                    file,
+                    targetFile
+                  )
+                }
+                false
+              } else {
+                log.debug(
+                  s"File not changed [${file.getAbsolutePath}]"
+                )
+                pristine
+              }
+            }
+        ).fold(ex => throw ex, identity)
+      })
+  }
+
   override lazy val projectSettings: Seq[Setting[?]] = Seq(
-    scriptedSource := {
+    scriptedSourcesSync := {
       val log = streams.value.log
 
-      log.debug("Running scripted source")
+      log.debug("Running scripted sources sync")
 
       val baseDirectoryV = baseDirectory.value
       val sbtTestDirectoryV = sbtTestDirectory.value
 
       runScriptedSource(dry = false, log)(baseDirectoryV, sbtTestDirectoryV)
     },
-    scriptedSourceCheck := {
+    scriptedSourcesCheck := {
       val log = streams.value.log
 
-      log.debug("Running scripted source check")
+      log.debug("Running scripted sources check")
 
       val baseDirectoryV = baseDirectory.value
       val sbtTestDirectoryV = sbtTestDirectory.value
 
       val pristine =
         runScriptedSource(dry = true, log)(baseDirectoryV, sbtTestDirectoryV)
-      if (pristine) {} else {
+      if (!pristine) {
         sys.error("Scripted sources not in sync!")
       }
     },
-    scripted := scripted.dependsOn(scriptedSource).evaluated
-    // TODO add examples to `scripted / watchTriggers`
+    scripted := scripted.dependsOn(scriptedSourcesSync).evaluated,
+    scripted / watchTriggers ++= {
+      val log = Keys.sLog.value
+
+      log.debug("Setting scripted sources as watch triggers")
+
+      val baseDirectoryV = baseDirectory.value
+      val sbtTestDirectoryV = sbtTestDirectory.value
+
+      processScriptedSources(log)(baseDirectoryV, sbtTestDirectoryV)(
+        _.flatMap { case (_, sourcesForTest) =>
+          sourcesForTest
+            .map { sourceForTest =>
+              Glob(sourceForTest, RecursiveGlob)
+            }
+        }.toList
+      )
+    }
   )
 }

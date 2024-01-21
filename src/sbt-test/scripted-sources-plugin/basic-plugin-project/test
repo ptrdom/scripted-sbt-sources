@@ -3,9 +3,9 @@ $ absent src/sbt-test/basic-plugin-project/basic-project/src/main/scala/example/
 $ absent src/sbt-test/basic-plugin-project/basic-project/index.html
 $ absent src/sbt-test/basic-plugin-project/basic-project/style.css
 
--> scriptedSourceCheck
+-> scriptedSourcesCheck
 > scripted
-> scriptedSourceCheck
+> scriptedSourcesCheck
 
 $ exists src/sbt-test/basic-plugin-project/basic-project/project/plugins.sbt
 $ exists src/sbt-test/basic-plugin-project/basic-project/src/main/scala/example/Hello.scala
