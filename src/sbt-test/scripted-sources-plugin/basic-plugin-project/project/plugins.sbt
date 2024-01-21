@@ -25,6 +25,6 @@ if (sourcePlugins.nonEmpty) {
     sys.error("'plugin.version' environment variable is not set")
   )
   Seq(
-    addSbtPlugin("scripted-sbt-sources" % "scripted-sbt-sources" % version)
+    addSbtPlugin("me.ptrdom" % "scripted-sbt-sources" % version)
   )
 }
