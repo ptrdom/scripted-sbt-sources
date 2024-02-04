@@ -20,10 +20,9 @@ object ScriptedSourcesPlugin extends AutoPlugin {
   override def requires = ScriptedPlugin
 
   object autoImport {
+    val scriptedSourcesSbtTestDirectory = settingKey[File]("")
     val scriptedSourcesSync =
       taskKey[Boolean]("Sync scripted tests with their sources")
-    val scriptedSourcesCheck =
-      taskKey[Unit]("Check if scripted tests and their sources are in sync")
   }
 
   import autoImport.*
@@ -139,29 +138,33 @@ object ScriptedSourcesPlugin extends AutoPlugin {
   }
 
   override lazy val projectSettings: Seq[Setting[?]] = Seq(
+    sbtTestDirectory := target.value / "generated-sbt-test",
+    scriptedSourcesSbtTestDirectory := sourceDirectory.value / "sbt-test",
+    scripted / watchTriggers += Glob(
+      scriptedSourcesSbtTestDirectory.value,
+      RecursiveGlob
+    ),
     scriptedSourcesSync := {
       val log = streams.value.log
 
       log.debug("Running scripted sources sync")
 
       val baseDirectoryV = baseDirectory.value
+      val scriptedSourcesSbtTestDirectoryV =
+        scriptedSourcesSbtTestDirectory.value
       val sbtTestDirectoryV = sbtTestDirectory.value
 
-      runScriptedSource(dry = false, log)(baseDirectoryV, sbtTestDirectoryV)
-    },
-    scriptedSourcesCheck := {
-      val log = streams.value.log
+      // TODO replace with copy that only moves files if they changed
+      IO.copyDirectory(
+        scriptedSourcesSbtTestDirectoryV,
+        sbtTestDirectoryV,
+        overwrite = true
+      )
 
-      log.debug("Running scripted sources check")
-
-      val baseDirectoryV = baseDirectory.value
-      val sbtTestDirectoryV = sbtTestDirectory.value
-
-      val pristine =
-        runScriptedSource(dry = true, log)(baseDirectoryV, sbtTestDirectoryV)
-      if (!pristine) {
-        sys.error("Scripted sources not in sync!")
-      }
+      runScriptedSource(dry = false, log)(
+        baseDirectoryV,
+        sbtTestDirectoryV
+      )
     },
     scripted := scripted.dependsOn(scriptedSourcesSync).evaluated,
     scripted / watchTriggers ++= {
@@ -170,9 +173,13 @@ object ScriptedSourcesPlugin extends AutoPlugin {
       log.debug("Setting scripted sources as watch triggers")
 
       val baseDirectoryV = baseDirectory.value
-      val sbtTestDirectoryV = sbtTestDirectory.value
+      val scriptedSourcesSbtTestDirectoryV =
+        scriptedSourcesSbtTestDirectory.value
 
-      processScriptedSources(log)(baseDirectoryV, sbtTestDirectoryV)(
+      processScriptedSources(log)(
+        baseDirectoryV,
+        scriptedSourcesSbtTestDirectoryV
+      )(
         _.flatMap { case (_, sourcesForTest) =>
           sourcesForTest
             .map { sourceForTest =>
