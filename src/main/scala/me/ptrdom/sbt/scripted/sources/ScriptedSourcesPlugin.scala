@@ -21,31 +21,32 @@ object ScriptedSourcesPlugin extends AutoPlugin {
 
   object autoImport {
     val scriptedSourcesSbtTestDirectory = settingKey[File]("")
+    val scriptedSourcesConfigFileName =
+      settingKey[String]("File name of config for sources")
     val scriptedSourcesSync =
       taskKey[Boolean]("Sync scripted tests with their sources")
   }
 
   import autoImport.*
 
-  private val sourcesConfigFileName = ".sources"
-
   private def processScriptedSources[T](
       log: Logger
   )(
-      baseDirectoryV: File,
-      sbtTestDirectoryV: File
+      baseDirectory: File,
+      sbtTestDirectory: File,
+      scriptedSourcesConfigFileName: String
   )(
       handler: Iterator[(Path, Set[sbt.File])] => T
   ): T = {
     Using(
-      Files.walk(sbtTestDirectoryV.toPath)
+      Files.walk(sbtTestDirectory.toPath)
     ) { stream =>
       val dataForHandler = stream
         .iterator()
         .asScala
         .flatMap { testDirectory =>
           val sourcesConfig =
-            new File(testDirectory.toFile, sourcesConfigFileName)
+            new File(testDirectory.toFile, scriptedSourcesConfigFileName)
           if (!sourcesConfig.exists()) {
             log.debug(
               s"scripted sources config missing [${sourcesConfig.absolutePath}]"
@@ -57,7 +58,7 @@ object ScriptedSourcesPlugin extends AutoPlugin {
                 source
                   .getLines()
                   .map { sourceForTest =>
-                    val sourceForTestDirectory = baseDirectoryV / sourceForTest
+                    val sourceForTestDirectory = baseDirectory / sourceForTest
                     if (!sourceForTestDirectory.exists()) {
                       sys.error(
                         s"Source for test is missing [${sourceForTestDirectory.getAbsolutePath}]"
@@ -88,10 +89,17 @@ object ScriptedSourcesPlugin extends AutoPlugin {
 
   private def runScriptedSource(
       log: ManagedLogger
-  )(baseDirectoryV: File, sbtTestDirectoryV: File): Boolean = {
-    processScriptedSources(log)(baseDirectoryV, sbtTestDirectoryV)(_.flatMap {
-      case (testDirectory, sourcesForTest) =>
-        sourcesForTest.map(sourceForTest => (testDirectory, sourceForTest))
+  )(
+      baseDirectory: File,
+      sbtTestDirectory: File,
+      scriptedSourcesConfigFileName: String
+  ): Boolean = {
+    processScriptedSources(log)(
+      baseDirectory,
+      sbtTestDirectory,
+      scriptedSourcesConfigFileName
+    )(_.flatMap { case (testDirectory, sourcesForTest) =>
+      sourcesForTest.map(sourceForTest => (testDirectory, sourceForTest))
     }
       .foldLeft(true) { case (pristine, (testDirectory, sourceForTest)) =>
         if (
@@ -129,7 +137,7 @@ object ScriptedSourcesPlugin extends AutoPlugin {
               Hash(targetFile)
             )) || !targetFile.exists()
           ) {
-            log.info(
+            log.debug(
               s"File changed [${file.getAbsolutePath}], copying to [${targetFile.getAbsolutePath}]"
             )
             IO.copyFile(
@@ -138,7 +146,7 @@ object ScriptedSourcesPlugin extends AutoPlugin {
             )
             false
           } else {
-            log.info(
+            log.debug(
               s"File not changed [${file.getAbsolutePath}]"
             )
             pristine
@@ -149,6 +157,7 @@ object ScriptedSourcesPlugin extends AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[?]] = Seq(
     sbtTestDirectory := target.value / "generated-sbt-test",
+    scriptedSourcesConfigFileName := ".sources",
     scriptedSourcesSbtTestDirectory := sourceDirectory.value / "sbt-test",
     scripted / watchTriggers += Glob(
       scriptedSourcesSbtTestDirectory.value,
@@ -163,6 +172,7 @@ object ScriptedSourcesPlugin extends AutoPlugin {
       val scriptedSourcesSbtTestDirectoryV =
         scriptedSourcesSbtTestDirectory.value
       val sbtTestDirectoryV = sbtTestDirectory.value
+      val scriptedSourcesConfigFileNameV = scriptedSourcesConfigFileName.value
 
       sbtTestDirectoryV.mkdirs()
 
@@ -174,7 +184,8 @@ object ScriptedSourcesPlugin extends AutoPlugin {
         ),
         runScriptedSource(log)(
           baseDirectoryV,
-          sbtTestDirectoryV
+          sbtTestDirectoryV,
+          scriptedSourcesConfigFileNameV
         )
       ).reduce(_ && _)
     },
@@ -187,10 +198,12 @@ object ScriptedSourcesPlugin extends AutoPlugin {
       val baseDirectoryV = baseDirectory.value
       val scriptedSourcesSbtTestDirectoryV =
         scriptedSourcesSbtTestDirectory.value
+      val scriptedSourcesConfigFileNameV = scriptedSourcesConfigFileName.value
 
       processScriptedSources(log)(
         baseDirectoryV,
-        scriptedSourcesSbtTestDirectoryV
+        scriptedSourcesSbtTestDirectoryV,
+        scriptedSourcesConfigFileNameV
       )(
         _.flatMap { case (_, sourcesForTest) =>
           sourcesForTest
