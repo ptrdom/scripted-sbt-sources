@@ -87,7 +87,6 @@ object ScriptedSourcesPlugin extends AutoPlugin {
   }
 
   private def runScriptedSource(
-      dry: Boolean,
       log: ManagedLogger
   )(baseDirectoryV: File, sbtTestDirectoryV: File): Boolean = {
     processScriptedSources(log)(baseDirectoryV, sbtTestDirectoryV)(_.flatMap {
@@ -95,46 +94,57 @@ object ScriptedSourcesPlugin extends AutoPlugin {
         sourcesForTest.map(sourceForTest => (testDirectory, sourceForTest))
     }
       .foldLeft(true) { case (pristine, (testDirectory, sourceForTest)) =>
-        Using(
-          Files
-            .walk(sourceForTest.toPath)
-        )(
-          _.iterator().asScala
-            .map(_.toFile)
-            .filter(
-              _.isFile
-            )
-            .foldLeft(pristine) { case (pristine, file) =>
-              val targetFile = new File(
-                file.getAbsolutePath.replace(
-                  sourceForTest.getAbsolutePath,
-                  testDirectory.toFile.getAbsolutePath
-                )
-              )
-              if (
-                !Hash(file).sameElements(
-                  Hash(targetFile)
-                ) || !targetFile.exists()
-              ) {
-                log.debug(
-                  s"File changed [${file.getAbsolutePath}], copying to [${targetFile.getAbsolutePath}]"
-                )
-                if (!dry) {
-                  IO.copyFile(
-                    file,
-                    targetFile
-                  )
-                }
-                false
-              } else {
-                log.debug(
-                  s"File not changed [${file.getAbsolutePath}]"
-                )
-                pristine
-              }
-            }
-        ).fold(ex => throw ex, identity)
+        if (
+          !copyDirectory(log)(
+            sourceForTest,
+            testDirectory.toFile,
+            sourcePriority = false
+          )
+        ) false
+        else pristine
       })
+  }
+
+  private def copyDirectory(
+      log: ManagedLogger
+  )(sourceDirectory: File, targetDirectory: File, sourcePriority: Boolean) = {
+    Using(
+      Files
+        .walk(sourceDirectory.toPath)
+    )(
+      _.iterator().asScala
+        .map(_.toFile)
+        .filter(
+          _.isFile
+        )
+        .foldLeft(true) { case (pristine, file) =>
+          val targetFile = new File(
+            file.getAbsolutePath.replace(
+              sourceDirectory.getAbsolutePath,
+              targetDirectory.getAbsolutePath
+            )
+          )
+          if (
+            (sourcePriority && !Hash(file).sameElements(
+              Hash(targetFile)
+            )) || !targetFile.exists()
+          ) {
+            log.info(
+              s"File changed [${file.getAbsolutePath}], copying to [${targetFile.getAbsolutePath}]"
+            )
+            IO.copyFile(
+              file,
+              targetFile
+            )
+            false
+          } else {
+            log.info(
+              s"File not changed [${file.getAbsolutePath}]"
+            )
+            pristine
+          }
+        }
+    ).fold(ex => throw ex, identity)
   }
 
   override lazy val projectSettings: Seq[Setting[?]] = Seq(
@@ -154,17 +164,19 @@ object ScriptedSourcesPlugin extends AutoPlugin {
         scriptedSourcesSbtTestDirectory.value
       val sbtTestDirectoryV = sbtTestDirectory.value
 
-      // TODO replace with copy that only moves files if they changed
-      IO.copyDirectory(
-        scriptedSourcesSbtTestDirectoryV,
-        sbtTestDirectoryV,
-        overwrite = true
-      )
+      sbtTestDirectoryV.mkdirs()
 
-      runScriptedSource(dry = false, log)(
-        baseDirectoryV,
-        sbtTestDirectoryV
-      )
+      Seq(
+        copyDirectory(log)(
+          scriptedSourcesSbtTestDirectoryV,
+          sbtTestDirectoryV,
+          sourcePriority = true
+        ),
+        runScriptedSource(log)(
+          baseDirectoryV,
+          sbtTestDirectoryV
+        )
+      ).reduce(_ && _)
     },
     scripted := scripted.dependsOn(scriptedSourcesSync).evaluated,
     scripted / watchTriggers ++= {
