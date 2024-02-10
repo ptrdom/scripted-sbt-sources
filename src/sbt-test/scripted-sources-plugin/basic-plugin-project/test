@@ -1,2 +1,8 @@
+$ absent target/generated-sbt-test
 > scripted
-# TODO create better tests to check if watch mode and source overriding from scripted tests works
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/project/plugins.sbt src/sbt-test-base/project/plugins.sbt
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/project/TestPlugins.sbt src/sbt-test/basic-plugin-project/basic-project/project/TestPlugins.sbt
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/TestBuild.sbt src/sbt-test/basic-plugin-project/basic-project/TestBuild.sbt
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/src/main/scala/example/Hello.scala example/src/main/scala/example/Hello.scala
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/index.html example/index.html
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/style.css example/style.css
