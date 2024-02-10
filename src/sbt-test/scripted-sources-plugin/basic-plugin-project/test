@@ -1,13 +1,8 @@
-$ absent src/sbt-test/basic-plugin-project/basic-project/project/plugins.sbt
-$ absent src/sbt-test/basic-plugin-project/basic-project/src/main/scala/example/Hello.scala
-$ absent src/sbt-test/basic-plugin-project/basic-project/index.html
-$ absent src/sbt-test/basic-plugin-project/basic-project/style.css
-
--> scriptedSourcesCheck
+$ absent target/generated-sbt-test
 > scripted
-> scriptedSourcesCheck
-
-$ exists src/sbt-test/basic-plugin-project/basic-project/project/plugins.sbt
-$ exists src/sbt-test/basic-plugin-project/basic-project/src/main/scala/example/Hello.scala
-$ exists src/sbt-test/basic-plugin-project/basic-project/index.html
-$ exists src/sbt-test/basic-plugin-project/basic-project/style.css
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/project/plugins.sbt src/sbt-test-base/project/plugins.sbt
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/project/TestPlugins.sbt src/sbt-test/basic-plugin-project/basic-project/project/TestPlugins.sbt
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/TestBuild.sbt src/sbt-test/basic-plugin-project/basic-project/TestBuild.sbt
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/src/main/scala/example/Hello.scala example/src/main/scala/example/Hello.scala
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/index.html example/index.html
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/style.css example/style.css
