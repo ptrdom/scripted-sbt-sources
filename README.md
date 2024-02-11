@@ -1,6 +1,6 @@
 # scripted-sbt-sources
 
-scripted-sbt-sources is a sbt plugin for sbt plugins, which enables better modularisation of `scripted` tests to allow for 
+scripted-sbt-sources is a sbt plugin for sbt plugins, it adds improved modularisation of `scripted` tests to assist with 
 easier maintenance and clearer presentation of plugin usage examples.
 
 ## Motivation
