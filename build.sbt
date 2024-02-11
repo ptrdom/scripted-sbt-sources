@@ -2,7 +2,7 @@ inThisBuild(
   List(
     scalaVersion := "2.12.18",
     organization := "me.ptrdom",
-    homepage := Some(url("https://github.com/ptrdom/sbt-scripted-sources")),
+    homepage := Some(url("https://github.com/ptrdom/scripted-sbt-sources")),
     licenses := List(License.MIT),
     developers := List(
       Developer(
