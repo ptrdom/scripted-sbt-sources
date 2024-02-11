@@ -1,4 +1,5 @@
 $ absent target/generated-sbt-test
+
 > scripted
 $ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/project/plugins.sbt src/sbt-test-base/project/plugins.sbt
 $ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/project/TestPlugins.sbt src/sbt-test/basic-plugin-project/basic-project/project/TestPlugins.sbt
@@ -6,3 +7,23 @@ $ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/TestB
 $ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/src/main/scala/example/Hello.scala example/src/main/scala/example/Hello.scala
 $ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/index.html example/index.html
 $ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/style.css example/style.css
+
+$ delete src/sbt-test/basic-plugin-project/basic-project/project/plugins.sbt
+> scripted
+$ must-mirror target/generated-sbt-test/basic-plugin-project/basic-project/project/plugins.sbt src/sbt-test-base/project/plugins.sbt
+
+$ delete example/index.html
+> scripted
+$ absent target/generated-sbt-test/basic-plugin-project/basic-project/index.html
+
+$ delete src/sbt-test/basic-plugin-project/basic-project
+> scripted
+$ absent target/generated-sbt-test/basic-plugin-project/basic-project
+
+$ delete src/sbt-test/basic-plugin-project
+> scripted
+$ absent target/generated-sbt-test/basic-plugin-project
+
+$ delete src/sbt-test
+> scripted
+$ absent target/generated-sbt-test

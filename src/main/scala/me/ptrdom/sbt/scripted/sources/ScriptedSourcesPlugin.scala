@@ -159,9 +159,11 @@ object ScriptedSourcesPlugin extends AutoPlugin {
     sbtTestDirectory := target.value / "generated-sbt-test",
     scriptedSourcesConfigFileName := ".sources",
     scriptedSourcesSbtTestDirectory := sourceDirectory.value / "sbt-test",
-    scripted / watchTriggers += Glob(
-      scriptedSourcesSbtTestDirectory.value,
-      RecursiveGlob
+    scripted / watchTriggers := Seq(
+      Glob(
+        scriptedSourcesSbtTestDirectory.value,
+        RecursiveGlob
+      )
     ),
     scriptedSourcesSync := {
       val log = streams.value.log
@@ -174,20 +176,26 @@ object ScriptedSourcesPlugin extends AutoPlugin {
       val sbtTestDirectoryV = sbtTestDirectory.value
       val scriptedSourcesConfigFileNameV = scriptedSourcesConfigFileName.value
 
-      sbtTestDirectoryV.mkdirs()
+      IO.delete(sbtTestDirectoryV)
 
-      Seq(
-        copyDirectory(log)(
-          scriptedSourcesSbtTestDirectoryV,
-          sbtTestDirectoryV,
-          sourcePriority = true
-        ),
-        runScriptedSource(log)(
-          baseDirectoryV,
-          sbtTestDirectoryV,
-          scriptedSourcesConfigFileNameV
-        )
-      ).reduce(_ && _)
+      if (!scriptedSourcesSbtTestDirectoryV.exists()) {
+        true
+      } else {
+        sbtTestDirectoryV.mkdirs()
+
+        Seq(
+          copyDirectory(log)(
+            scriptedSourcesSbtTestDirectoryV,
+            sbtTestDirectoryV,
+            sourcePriority = true
+          ),
+          runScriptedSource(log)(
+            baseDirectoryV,
+            sbtTestDirectoryV,
+            scriptedSourcesConfigFileNameV
+          )
+        ).reduce(_ && _)
+      }
     },
     scripted := scripted.dependsOn(scriptedSourcesSync).evaluated,
     scripted / watchTriggers ++= {
