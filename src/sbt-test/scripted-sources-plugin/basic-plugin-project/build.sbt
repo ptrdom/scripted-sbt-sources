@@ -1,4 +1,4 @@
-import me.ptrdom.sbt.scripted.sources.ScriptedSourcesPlugin
+import sbt.scripted.sources.ScriptedSourcesPlugin
 
 ThisBuild / version := "0.1.0-SNAPSHOT"
 

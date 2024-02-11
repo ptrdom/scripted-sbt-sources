@@ -1,4 +1,4 @@
-package me.ptrdom.sbt.scripted.sources
+package sbt.scripted.sources
 
 import java.nio.file.Files
 import java.nio.file.Path
