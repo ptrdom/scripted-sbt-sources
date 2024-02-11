@@ -10,7 +10,7 @@ that the plugin needs not only documentation, but also clear and simple examples
 implementing that:
 
 1. Providing `/examples` subdirectory with select projects.
-1. Referencing 'scripted' tests as examples.
+1. Referencing `scripted` tests as examples.
 
 Problem with `/examples` subdirectory is that the examples must be kept up to date and made sure to remain working, and the 
 workflow for that is not immediately obvious. This can be solved by just using `scripted` tests as examples, but truly
