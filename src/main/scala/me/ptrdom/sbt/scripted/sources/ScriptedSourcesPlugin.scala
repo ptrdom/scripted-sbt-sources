@@ -177,20 +177,25 @@ object ScriptedSourcesPlugin extends AutoPlugin {
       val scriptedSourcesConfigFileNameV = scriptedSourcesConfigFileName.value
 
       IO.delete(sbtTestDirectoryV)
-      sbtTestDirectoryV.mkdirs()
 
-      Seq(
-        copyDirectory(log)(
-          scriptedSourcesSbtTestDirectoryV,
-          sbtTestDirectoryV,
-          sourcePriority = true
-        ),
-        runScriptedSource(log)(
-          baseDirectoryV,
-          sbtTestDirectoryV,
-          scriptedSourcesConfigFileNameV
-        )
-      ).reduce(_ && _)
+      if (!scriptedSourcesSbtTestDirectoryV.exists()) {
+        true
+      } else {
+        sbtTestDirectoryV.mkdirs()
+
+        Seq(
+          copyDirectory(log)(
+            scriptedSourcesSbtTestDirectoryV,
+            sbtTestDirectoryV,
+            sourcePriority = true
+          ),
+          runScriptedSource(log)(
+            baseDirectoryV,
+            sbtTestDirectoryV,
+            scriptedSourcesConfigFileNameV
+          )
+        ).reduce(_ && _)
+      }
     },
     scripted := scripted.dependsOn(scriptedSourcesSync).evaluated,
     scripted / watchTriggers ++= {
