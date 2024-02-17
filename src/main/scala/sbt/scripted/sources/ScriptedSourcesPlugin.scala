@@ -159,12 +159,6 @@ object ScriptedSourcesPlugin extends AutoPlugin {
     sbtTestDirectory := target.value / "generated-sbt-test",
     scriptedSourcesConfigFileName := ".sources",
     scriptedSourcesSbtTestDirectory := sourceDirectory.value / "sbt-test",
-    scripted / watchTriggers := Seq(
-      Glob(
-        scriptedSourcesSbtTestDirectory.value,
-        RecursiveGlob
-      )
-    ),
     scriptedSourcesSync := {
       val log = streams.value.log
 
@@ -197,29 +191,44 @@ object ScriptedSourcesPlugin extends AutoPlugin {
         ).reduce(_ && _)
       }
     },
-    scripted := scripted.dependsOn(scriptedSourcesSync).evaluated,
-    scripted / watchTriggers ++= {
+    scriptedSourcesSync / watchTriggers ++= {
       val log = Keys.sLog.value
 
-      log.debug("Setting scripted sources as watch triggers")
+      Seq(
+        {
+          log.debug(
+            s"Setting `scriptedSourcesSbtTestDirectory` [$scriptedSourcesSbtTestDirectory] as watch trigger"
+          )
 
-      val baseDirectoryV = baseDirectory.value
-      val scriptedSourcesSbtTestDirectoryV =
-        scriptedSourcesSbtTestDirectory.value
-      val scriptedSourcesConfigFileNameV = scriptedSourcesConfigFileName.value
+          Glob(
+            scriptedSourcesSbtTestDirectory.value,
+            RecursiveGlob
+          )
+        }
+      ) ++ {
 
-      processScriptedSources(log)(
-        baseDirectoryV,
-        scriptedSourcesSbtTestDirectoryV,
-        scriptedSourcesConfigFileNameV
-      )(
-        _.flatMap { case (_, sourcesForTest) =>
-          sourcesForTest
-            .map { sourceForTest =>
-              Glob(sourceForTest, RecursiveGlob)
-            }
-        }.toList
-      )
-    }
+        log.debug("Setting scripted sources as watch triggers")
+
+        val baseDirectoryV = baseDirectory.value
+        val scriptedSourcesSbtTestDirectoryV =
+          scriptedSourcesSbtTestDirectory.value
+        val scriptedSourcesConfigFileNameV = scriptedSourcesConfigFileName.value
+
+        processScriptedSources(log)(
+          baseDirectoryV,
+          scriptedSourcesSbtTestDirectoryV,
+          scriptedSourcesConfigFileNameV
+        )(
+          _.flatMap { case (_, sourcesForTest) =>
+            sourcesForTest
+              .map { sourceForTest =>
+                Glob(sourceForTest, RecursiveGlob)
+              }
+          }.toList
+        )
+      }
+    },
+    scripted := scripted.dependsOn(scriptedSourcesSync).evaluated,
+    scripted / watchTriggers := Seq.empty // watch triggers should be added to `scriptedSourcesSync` task instead
   )
 }
