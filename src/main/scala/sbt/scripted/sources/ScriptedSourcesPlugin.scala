@@ -98,19 +98,21 @@ object ScriptedSourcesPlugin extends AutoPlugin {
       baseDirectory,
       sbtTestDirectory,
       scriptedSourcesConfigFileName
-    )(_.flatMap { case (testDirectory, sourcesForTest) =>
-      sourcesForTest.map(sourceForTest => (testDirectory, sourceForTest))
-    }
-      .foldLeft(true) { case (pristine, (testDirectory, sourceForTest)) =>
-        if (
-          !copyDirectory(log)(
-            sourceForTest,
-            testDirectory.toFile,
-            sourcePriority = false
-          )
-        ) false
-        else pristine
-      })
+    )(
+      _.flatMap { case (testDirectory, sourcesForTest) =>
+        sourcesForTest.map(sourceForTest => (testDirectory, sourceForTest))
+      }
+        .foldLeft(true) { case (pristine, (testDirectory, sourceForTest)) =>
+          if (
+            !copyDirectory(log)(
+              sourceForTest,
+              testDirectory.toFile,
+              sourcePriority = false
+            )
+          ) false
+          else pristine
+        }
+    )
   }
 
   private def copyDirectory(
