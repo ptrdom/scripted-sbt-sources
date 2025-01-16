@@ -1,6 +1,6 @@
 inThisBuild(
   List(
-    scalaVersion := "2.12.20",
+    scalaVersion := "2.13.16",
     organization := "me.ptrdom",
     homepage := Some(url("https://github.com/ptrdom/scripted-sbt-sources")),
     licenses := List(License.MIT),
