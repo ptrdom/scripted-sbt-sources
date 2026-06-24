@@ -15,9 +15,8 @@
   ],
   "packageRules": [
     {
-      "description": "sbt-launch 1.12.13+ defaults to the sbt 2.x runner, which requires JDK 17+. Pin to the last sbt 1.x-default launcher.",
       "matchPackageNames": ["org.scala-sbt:sbt-launch"],
-      "allowedVersions": "<1.12.13"
+      "allowedVersions": "<2.0.0"
     }
   ]
 }
