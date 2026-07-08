@@ -37,6 +37,14 @@
       "depNameTemplate": "scalameta/scalafmt",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/test\\.ya?ml$/"],
+      "matchStrings": ["ubuntu-(?<currentValue>\\d+\\.\\d+)"],
+      "depNameTemplate": "ubuntu",
+      "datasourceTemplate": "github-runners",
+      "versioningTemplate": "ubuntu"
     }
   ],
   "packageRules": [
