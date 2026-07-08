@@ -14,6 +14,10 @@ jobs:
       - uses: coursier/setup-action@v3
         with:
           jvm: temurin:11
+          # ubuntu-24.04 runners no longer ship sbt preinstalled, so install
+          # it via coursier. Pin to the sbt 1.x runner (2.x requires JDK 17+).
+          # Kept in sync with sbt releases by Renovate.
+          apps: sbt:1.12.13
       - run: sbt ci-release
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
