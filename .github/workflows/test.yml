@@ -12,7 +12,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-24.04, windows-latest]
+        os: [ubuntu-26.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -20,7 +20,7 @@ jobs:
       - uses: coursier/setup-action@v3
         with:
           jvm: temurin:11
-          # ubuntu-24.04 runners no longer ship sbt preinstalled, so install
+          # ubuntu-26.04 runners no longer ship sbt preinstalled, so install
           # it via coursier. Pin to the sbt 1.x runner (2.x requires JDK 17+).
           # Kept in sync with sbt releases by Renovate.
           apps: sbt:1.13.0
