@@ -23,6 +23,6 @@ jobs:
           # ubuntu-26.04 runners no longer ship sbt preinstalled, so install
           # it via coursier. Pin to the sbt 1.x runner (2.x requires JDK 17+).
           # Kept in sync with sbt releases by Renovate.
-          apps: sbt:1.13.0
+          apps: sbt:1.13.1
       - name: Run tests
         run: sbt scalafmtSbtCheck scalafmtCheckAll test scripted
