@@ -46,11 +46,10 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/^\\.github/workflows/test\\.ya?ml$/"],
-      "matchStrings": ["ubuntu-(?<currentValue>\\d+\\.\\d+)"],
-      "depNameTemplate": "ubuntu",
-      "datasourceTemplate": "github-runners",
-      "versioningTemplate": "ubuntu"
+      "description": "Runner labels in the test matrix: the github-actions manager does not resolve `runs-on: ${{ matrix.os }}`.",
+      "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"],
+      "matchStrings": ["\\b(?<depName>ubuntu|windows|macos)-(?<currentValue>\\d+(?:\\.\\d+)?)\\b"],
+      "datasourceTemplate": "github-runners"
     }
   ],
   "packageRules": [
